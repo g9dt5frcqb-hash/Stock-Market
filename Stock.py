@@ -2,10 +2,12 @@ import os
 import time
 import datetime
 import alpaca_trade_api as tradeapi
+from dotenv import load_dotenv
 
+load_dotenv()
 # Load environment variables
 API_KEY = os.getenv("API_KEY")
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("API_SECRET")
 BASE_URL = os.getenv("BASE_URL")
 
 # Connect to Alpaca
@@ -52,14 +54,16 @@ def cooldown_passed(symbol):
 
 def get_signal(symbol):
     """Simple momentum signal for each symbol."""
+    # Note: get_bars returns a list-like object of Bar objects
     bars = api.get_bars(symbol, "1Min", limit=3)
 
     if len(bars) < 3:
         return "HOLD"
 
-    p1 = bars[0].close
-    p2 = bars[1].close
-    p3 = bars[2].close
+    # Change .close to .c
+    p1 = bars[0].c
+    p2 = bars[1].c
+    p3 = bars[2].c
 
     if p3 > p2 > p1:
         return "BUY"
