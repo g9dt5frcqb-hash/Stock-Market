@@ -1,0 +1,31 @@
+name: Run Trading Bot Weekly
+
+on:
+  schedule:
+    - cron: "0 15 * * 0"   # Every 7 days, Sunday, 10 AM CDT
+  workflow_dispatch:
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14.2"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install alpaca-trade-api python-dotenv
+
+      - name: Run trading bot
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        run: |
+          python Stock.py
