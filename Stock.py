@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 # Load environment variables
-API_KEY = os.getenv("API_KEY")
-SECRET_KEY = os.getenv("API_SECRET")
+API_KEY = os.getenv("APCA_API_KEY_ID")
+SECRET_KEY = os.getenv("APCA_API_SECRET_KEY")
 BASE_URL = os.getenv("BASE_URL")
 
 # Connect to Alpaca
@@ -24,7 +24,7 @@ api = tradeapi.REST(
 SYMBOLS = ["EA", "LMT", "QQQ", "VLO", "JPM"]  # your portfolio
 MAX_TRADES_PER_HOUR = 2
 COOLDOWN_SECONDS = 300  # 5 minutes
-WINDOW_MINUTES = 20     # trade only first 20 minutes of each hour
+WINDOW_MINUTES = 60     # full hour for testing
 
 # -----------------------------
 # STATE TRACKING
@@ -42,7 +42,7 @@ state = {
 # -----------------------------
 def in_trading_window():
     minute = datetime.datetime.now().minute
-    return minute < WINDOW_MINUTES
+    return minute <= WINDOW_MINUTES
 
 
 def cooldown_passed(symbol):
@@ -54,13 +54,12 @@ def cooldown_passed(symbol):
 
 def get_signal(symbol):
     """Simple momentum signal for each symbol."""
-    # Note: get_bars returns a list-like object of Bar objects
     bars = api.get_bars(symbol, "1Min", limit=3)
+    print(f"  {symbol} bars: {[b.c for b in bars]}")  # debug
 
     if len(bars) < 3:
         return "HOLD"
 
-    # Change .close to .c
     p1 = bars[0].c
     p2 = bars[1].c
     p3 = bars[2].c
@@ -101,17 +100,14 @@ def run_trading_logic():
         for symbol in SYMBOLS:
             print(f"\nChecking {symbol}...")
 
-            # Trade limit
             if state[symbol]["trades_this_hour"] >= MAX_TRADES_PER_HOUR:
                 print(f"{symbol}: Max trades reached.")
                 continue
 
-            # Cooldown
             if not cooldown_passed(symbol):
                 print(f"{symbol}: Cooldown active.")
                 continue
 
-            # Signal
             signal = get_signal(symbol)
             print(f"{symbol} signal: {signal}")
 
@@ -131,15 +127,22 @@ def run_trading_logic():
 def main():
     now = datetime.datetime.now()
     print(f"Bot started at {now}")
+    print(f"API_KEY loaded: {'YES' if API_KEY else 'NO'}")
+    print(f"SECRET_KEY loaded: {'YES' if SECRET_KEY else 'NO'}")
+    print(f"BASE_URL: {BASE_URL}")
 
-    # Reset hourly counters
+    try:
+        account = api.get_account()
+        print(f"Account status: {account.status}")
+        print(f"Buying power: ${account.buying_power}")
+    except Exception as e:
+        print(f"API connection failed: {e}")
+        return
+
     for symbol in SYMBOLS:
         state[symbol]["trades_this_hour"] = 0
 
-    if in_trading_window():
-        run_trading_logic()
-    else:
-        print("Outside trading window. Exiting.")
+    run_trading_logic()  # always run, no window check for testing
 
     print("Bot finished.")
 
